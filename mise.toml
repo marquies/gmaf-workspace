@@ -34,7 +34,7 @@ description = "Build every cloned repo in pom.xml dependency order (mvn install,
 run = "bash scripts/build-all.sh"
 
 [tasks.dev]
-description = "Run the dev environment: GMAF-UI (hosts the REST API) + the React web UI prototype"
+description = "Run the dev environment: GMAF-UI (hosts the REST API) + the React web UI prototype; --basedir picks the conf folder"
 run = "bash scripts/dev.sh"
 
 [tasks.clean]

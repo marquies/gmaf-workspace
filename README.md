@@ -116,10 +116,12 @@ mise run exec -- git log -1 --oneline   # run any command in every cloned repo
 ## Running the dev environment
 
 ```sh
-mise run dev                        # GMAF-UI + the React web UI prototype
-mise run dev -- --ui-only           # just GMAF-UI (and with it the REST/SOAP API)
-mise run dev -- --web-only          # just the React dev server
-PORT=3001 mise run dev              # move the web dev server off port 3000
+mise run dev                              # GMAF-UI + the React web UI prototype
+mise run dev -- --ui-only                 # just GMAF-UI (and with it the REST/SOAP API)
+mise run dev -- --web-only                # just the React dev server
+mise run dev -- --basedir=gmaf-mvr-ui-public   # run against a different conf/ + data set
+GMAF_BASEDIR=/some/where mise run dev     # same, via environment
+PORT=3001 mise run dev                    # move the web dev server off port 3000
 ```
 
 Both processes run in the foreground with their output interleaved and tagged
@@ -135,11 +137,45 @@ spawns. If either side exits on its own, the other is shut down too.
 | Web UI | `http://localhost:3000` | `npm start`, reads the REST API |
 
 The key thing to know: **there is no separate backend process.** `de.swa.ui.Main` starts
-`de.swa.gmaf.Service` in-process when `launchServer = true` in
-`gmaf-mvr-ui-public/conf/gmaf.config`, so the REST API the web client needs only exists
-while GMAF-UI is running — `--web-only` gives you a UI with nothing to talk to. GMAF-UI
-is launched from its own checkout because `Configuration` reads `conf/gmaf.config` and the
-`collection`/`mmfgs` folders relative to the working directory.
+`de.swa.gmaf.Service` in-process when `launchServer = true` in `conf/gmaf.config`, so the
+REST API the web client needs only exists while GMAF-UI is running — `--web-only` gives
+you a UI with nothing to talk to.
+
+### Choosing the conf folder (`--basedir`)
+
+`Configuration.reload()` opens `"conf" + File.separatorChar + "gmaf.config"` — a path
+relative to the **working directory** — and every data folder named inside it is resolved
+the same way. So the working directory is what selects the configuration, and `--basedir`
+sets it. `de.swa.ui.Main` does accept a basedir argument, but the field it assigns is
+never read anywhere in either repo, so passing one to the jar has no effect.
+
+The jar always comes from the `gmaf-mvr-ui-public` build; only the working directory
+changes. A bare name is looked up under `repos/`, anything with a `/` is used as a path,
+so you can point it at a data directory outside the workspace entirely.
+
+The default is `repos/gmaf-mvr`. The two obvious candidates are close to complementary,
+which is worth knowing before you pick one:
+
+| | `gmaf-mvr` (default) | `gmaf-mvr-ui-public` |
+|---|---|---|
+| has | `collection`, `conf`, `dictionary`, `resources`, `schema`, `export` | `conf`, `export`, `flows`, `graphcodes`, `mmfgs`, `rdf`, `temp`, `thumbnails` |
+| its `gmaf.config` points at | `collection2`, `mmfgs-foo`, `graphcodes`, `flows`, `rdf` — **none of which exist there** | `collection` — which does not exist there; the rest do |
+
+So `gmaf-mvr` carries the data but its config names folders that aren't present, while
+`gmaf-mvr-ui-public` has the runtime folders but no collection. The task prints exactly
+which folders named in the config are missing before starting, rather than letting GMAF
+quietly create empty ones or fail later:
+
+```
+== GMAF-UI      gmaf-ui-1.0.3-executable.jar
+   basedir      repos/gmaf-mvr  (conf/gmaf.config + data folders)
+   !! folders named in conf/gmaf.config that do not exist there:
+     collectionPath = collection2
+     mmfgRepository = mmfgs-foo
+```
+
+Fix that by editing the `conf/gmaf.config` of whichever basedir you use, or by pointing
+`--basedir` at a directory that has both the config and the data.
 
 Ports: `serverPort = 8481` (SOAP) comes from `conf/gmaf.config`; the REST port is *not*
 in that file and falls back to the `8242` default in `de.swa.ui.Configuration`, which is

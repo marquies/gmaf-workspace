@@ -5,7 +5,12 @@
 # Both run in the foreground with their output interleaved and tagged. Ctrl-C
 # stops both.
 #
-# Usage: dev.sh [--ui-only] [--web-only]
+# GMAF-UI resolves conf/gmaf.config and every data folder in it relative to its
+# working directory, so --basedir picks which conf folder and data set it uses.
+# (de.swa.ui.Main takes a basedir argument, but the field is never read — the
+# working directory is the only thing that actually decides this.)
+#
+# Usage: dev.sh [--basedir=<dir>] [--ui-only] [--web-only]
 set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=./common.sh
@@ -18,6 +23,10 @@ set -m
 UI_DIR="${REPOS_DIR}/gmaf-mvr-ui-public"
 WEB_DIR="${REPOS_DIR}/gmaf-mvr-webui-prototype"
 
+# Where GMAF-UI runs, i.e. which conf/ and data folders it picks up. A bare name
+# is taken as a repo under ./repos; anything else is used as a path.
+BASEDIR_ARG="${GMAF_BASEDIR:-gmaf-mvr}"
+
 # Defaults come from de.swa.ui.Configuration; conf/gmaf.config overrides them.
 REST_PORT="${GMAF_REST_PORT:-8242}"
 SOAP_PORT="${GMAF_SOAP_PORT:-8481}"
@@ -29,8 +38,10 @@ while [ "$#" -gt 0 ]; do
     case "$1" in
         --ui-only)  run_web=0; shift ;;
         --web-only) run_ui=0; shift ;;
+        --basedir)  BASEDIR_ARG="${2:-}"; shift 2 ;;
+        --basedir=*) BASEDIR_ARG="${1#--basedir=}"; shift ;;
         --help|-h)
-            sed -n '2,8p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+            sed -n '2,13p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
             exit 0
             ;;
         *) echo "unknown option: $1 (try --help)"; exit 2 ;;
@@ -46,9 +57,37 @@ fail() { echo "!! $*" >&2; exit 1; }
 
 # ---- preflight ------------------------------------------------------------
 
+# Reads a key from gmaf.config: "key = value", ignoring comments.
+config_value() {
+    grep -E "^[[:space:]]*$2[[:space:]]*=" "$1" 2>/dev/null \
+        | head -1 | cut -d'=' -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
+}
+
 UI_JAR=""
+BASEDIR=""
 if [ "${run_ui}" -eq 1 ]; then
     [ -d "${UI_DIR}" ] || fail "gmaf-mvr-ui-public is not cloned — run 'mise run clone'"
+
+    case "${BASEDIR_ARG}" in
+        */*|.|..) BASEDIR="${BASEDIR_ARG}" ;;
+        *)        BASEDIR="${REPOS_DIR}/${BASEDIR_ARG}" ;;   # bare name -> ./repos/<name>
+    esac
+    [ -d "${BASEDIR}" ] || fail "basedir '${BASEDIR_ARG}' does not exist (looked in ${BASEDIR})"
+    BASEDIR="$(cd "${BASEDIR}" && pwd)"
+    [ -f "${BASEDIR}/conf/gmaf.config" ] \
+        || fail "no conf/gmaf.config in ${BASEDIR} — pass --basedir=<dir> pointing at one that has it"
+
+    # Every data folder in gmaf.config is resolved relative to the working
+    # directory too, and GMAF creates some of them silently rather than warning.
+    missing=""
+    for key in collectionPath graphCodeRepository mmfgRepository exportFolder \
+               processingFlowFolder rdfRepository; do
+        value="$(config_value "${BASEDIR}/conf/gmaf.config" "${key}")"
+        [ -n "${value}" ] || continue
+        case "${value}" in /*) continue ;; esac   # absolute paths are the user's business
+        [ -d "${BASEDIR}/${value}" ] || missing="${missing}  ${key} = ${value}
+"
+    done
     # The shade plugin attaches the runnable fat jar with an -executable
     # classifier; the plain GMAF-UI.jar has no Main-Class and no dependencies.
     UI_JAR="$(ls -t "${UI_DIR}"/target/*-executable.jar 2>/dev/null | head -1)"
@@ -107,18 +146,26 @@ cleanup() {
     wait 2>/dev/null
 }
 
-on_signal() { cleanup; exit 130; }
+# Exit 0, not the conventional 130: Ctrl-C is how a dev session normally ends,
+# and mise would otherwise report "ERROR task failed" every single time.
+on_signal() { cleanup; exit 0; }
 trap on_signal INT TERM
 trap cleanup EXIT
 
 if [ "${run_ui}" -eq 1 ]; then
     echo "== GMAF-UI      $(basename "${UI_JAR}")"
+    echo "   basedir      ${BASEDIR#"${WORKSPACE_ROOT}"/}  (conf/gmaf.config + data folders)"
+    if [ -n "${missing}" ]; then
+        echo "   !! folders named in conf/gmaf.config that do not exist there:"
+        printf '%s' "${missing}" | sed 's/^/   /'
+        echo "      GMAF may create them empty or fail on first use."
+    fi
     echo "   REST API     http://localhost:${REST_PORT}/gmaf/gmafApi"
     echo "   Swagger UI   http://localhost:${REST_PORT}/swagger-ui/index.html"
     echo "   SOAP API     http://localhost:${SOAP_PORT}/gmaf/gmafApi"
-    # Runs from the checkout: Configuration reads conf/gmaf.config relative to
-    # the working directory, and the collection/mmfg folders are relative too.
-    ( cd "${UI_DIR}" && exec java -jar "${UI_JAR}" ) > >(prefix "[gmaf-ui] ") 2>&1 &
+    # The jar comes from the ui-public build, but the process runs in BASEDIR —
+    # that, and only that, decides which conf/gmaf.config and data it uses.
+    ( cd "${BASEDIR}" && exec java -jar "${UI_JAR}" ) > >(prefix "[gmaf-ui] ") 2>&1 &
     UI_PID=$!
 fi
 
