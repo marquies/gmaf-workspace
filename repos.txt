@@ -2,15 +2,9 @@
 # format: name|git_url|kind|default_branch|description
 # kind: maven | node | cmake | python-maven
 GMAF|https://github.com/marquies/GMAF.git|maven|master|Generic Multimedia Analysis Framework core (MMFG model)
-gmaf-dummy|https://github.com/marquies/gmaf-dummy.git|maven|master|Minimal GMAF plugin skeleton/example
-gmaf-cuda|https://github.com/marquies/gmaf-cuda.git|cmake|master|CUDA/C++ native feature extraction plugin
 gmaf-mvr|https://github.com/marquies/gmaf-mvr.git|maven|master|GMAF-MVR core (Metaverse Video Recording pipeline)
 gmaf-mvr-api|https://github.com/marquies/gmaf-mvr-api.git|maven|master|GMAF-MVR REST API
-gmaf-mvr-container|https://github.com/marquies/gmaf-mvr-container.git|maven|master|GMAF-MVR containerized runner
-gmaf-mvr-core-plugins|https://github.com/marquies/gmaf-mvr-core-plugins.git|maven|master|GMAF-MVR core feature-extraction plugins
-gmaf-mvr-rnd|https://github.com/marquies/gmaf-mvr-rnd.git|maven|master|GMAF-MVR research & development sandbox
 gmaf-mvr-semantics-public|https://github.com/marquies/gmaf-mvr-semantics-public.git|maven|master|GMAF-MVR semantics/explainability module
 gmaf-mvr-service-public|https://github.com/marquies/gmaf-mvr-service-public.git|maven|master|GMAF-MVR service layer
 gmaf-mvr-ui-public|https://github.com/marquies/gmaf-mvr-ui-public.git|maven|master|GMAF-MVR UI backend
 gmaf-mvr-webui-prototype|https://github.com/marquies/gmaf-mvr-webui-prototype.git|node|master|GMAF-MVR React web UI prototype
-avatar-detector-gmaf-plugin|https://github.com/marquies/avatar-detector-gmaf-plugin.git|python-maven|main|Avatar detector GMAF plugin (Java + Python/YOLOv7)

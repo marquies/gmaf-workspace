@@ -2,8 +2,7 @@
 java = "21"
 maven = "latest"
 node = "lts"
-python = "3.11"
-cmake = "latest"
+python = "3.11"    # used by scripts/pom-graph.py
 
 [tasks.list]
 description = "List all GMAF repositories in the manifest and their clone status"
@@ -25,6 +24,14 @@ run = "bash scripts/foreach.sh git status -sb"
 description = "Clone (if needed) and bootstrap every repo for local development"
 depends = ["clone"]
 run = "bash scripts/setup-all.sh"
+
+[tasks.build-order]
+description = "Show the pom.xml-derived build order without building anything"
+run = "python3 scripts/pom-graph.py --format=human"
+
+[tasks.build]
+description = "Build every cloned repo in pom.xml dependency order (mvn install, npm build, cmake)"
+run = "bash scripts/build-all.sh"
 
 [tasks.exec]
 description = "Run an arbitrary command in every cloned repo, e.g. `mise run exec -- git log -1`"
