@@ -33,6 +33,10 @@ run = "python3 scripts/pom-graph.py --format=human"
 description = "Build every cloned repo in pom.xml dependency order (mvn install, npm build, cmake)"
 run = "bash scripts/build-all.sh"
 
+[tasks.dev]
+description = "Run the dev environment: GMAF-UI (hosts the REST API) + the React web UI prototype"
+run = "bash scripts/dev.sh"
+
 [tasks.clean]
 description = "Delete the checkouts in ./repos (refuses if a repo holds unsaved work)"
 run = "bash scripts/clean-all.sh"

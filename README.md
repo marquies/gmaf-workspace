@@ -22,6 +22,7 @@ mise install      # installs the pinned Java/Maven/Node/Python versions
 mise run clone    # clones every repo in repos.txt into ./repos
 mise run setup    # resolves Maven deps / npm installs for each repo
 mise run build    # builds every repo in pom.xml dependency order
+mise run dev      # runs GMAF-UI + the web UI prototype
 mise run status   # git status across every checked-out repo
 mise run list     # show the manifest with clone status
 ```
@@ -92,15 +93,13 @@ it — the GMAF-MVR line depends on `de.swa:gmaf-mvr` instead.
 
 `gmaf-mvr-service-public` declared `com.fasterxml.jackson.core:jackson-databind` twice
 with conflicting versions (a hardcoded `2.18.2` plus `${jackson.version}` = `2.17.1`),
-which Maven rejects outright with *dependencies.dependency.(groupId:artifactId:type:
-classifier) must be unique*. The fix applied locally: drop the hardcoded declaration and
-raise `<jackson.version>` to `2.18.2`, so `jackson-databind`, `jackson-core`, and
+which Maven rejected outright with *dependencies.dependency.(groupId:artifactId:type:
+classifier) must be unique*. Fixed by dropping the hardcoded declaration and raising
+`<jackson.version>` to `2.18.2`, so `jackson-databind`, `jackson-core`, and
 `jackson-annotations` all move in lockstep off the one property.
 
-⚠️ **That fix lives in `repos/`, which is git-ignored** — it is not tracked by this
-workspace and a fresh `mise run clone` (or any other machine) gets the broken POM back.
-It needs a commit in the upstream `gmaf-mvr-service-public` repository to become
-permanent.
+Fixed upstream in [gmaf-mvr-service-public#1](https://github.com/marquies/gmaf-mvr-service-public/pull/1),
+so a fresh `mise run clone` picks it up — nothing needs patching by hand any more.
 
 The `settings.xml`/`toolchains.xml` files checked into a few repos point at GitHub Actions
 paths (`/opt/hostedtoolcache/...`), so the build deliberately does **not** pass them to
@@ -113,6 +112,48 @@ mise run pull                       # git pull --ff-only everywhere
 mise run status                     # git status -sb everywhere
 mise run exec -- git log -1 --oneline   # run any command in every cloned repo
 ```
+
+## Running the dev environment
+
+```sh
+mise run dev                        # GMAF-UI + the React web UI prototype
+mise run dev -- --ui-only           # just GMAF-UI (and with it the REST/SOAP API)
+mise run dev -- --web-only          # just the React dev server
+PORT=3001 mise run dev              # move the web dev server off port 3000
+```
+
+Both processes run in the foreground with their output interleaved and tagged
+(`[gmaf-ui]` / `[webui]`). Ctrl-C stops both, including the children `npm start`
+spawns. If either side exits on its own, the other is shut down too.
+
+| what | where | notes |
+|------|-------|-------|
+| GMAF-UI | `java -jar target/*-executable.jar` in `gmaf-mvr-ui-public` | Swing desktop client |
+| REST API | `http://localhost:8242/gmaf/gmafApi` | started *inside* GMAF-UI |
+| Swagger UI | `http://localhost:8242/swagger-ui/index.html` | |
+| SOAP API | `http://localhost:8481/gmaf/gmafApi` | |
+| Web UI | `http://localhost:3000` | `npm start`, reads the REST API |
+
+The key thing to know: **there is no separate backend process.** `de.swa.ui.Main` starts
+`de.swa.gmaf.Service` in-process when `launchServer = true` in
+`gmaf-mvr-ui-public/conf/gmaf.config`, so the REST API the web client needs only exists
+while GMAF-UI is running — `--web-only` gives you a UI with nothing to talk to. GMAF-UI
+is launched from its own checkout because `Configuration` reads `conf/gmaf.config` and the
+`collection`/`mmfgs` folders relative to the working directory.
+
+Ports: `serverPort = 8481` (SOAP) comes from `conf/gmaf.config`; the REST port is *not*
+in that file and falls back to the `8242` default in `de.swa.ui.Configuration`, which is
+what `src/config/config.js` in the web prototype expects. Change one and you must change
+the other. The task refuses to start if 8242, 8481 or 3000 is already taken rather than
+letting a half-bound stack come up.
+
+`dev` needs `mise run build` to have produced `gmaf-mvr-ui-public/target/*-executable.jar`
+(the shaded jar — plain `GMAF-UI.jar` has no `Main-Class` and no dependencies); it says so
+if the jar is missing, and installs `node_modules` itself if needed.
+
+Known rough edge, pre-existing and unrelated to the task: `GET /gmaf/gmafApi/openapi.json`
+returns 500 (`Illegal attempt to call getOutputStream() after getWriter()`), while
+`/swagger-ui/index.html` serves fine.
 
 ## Starting over
 
@@ -148,7 +189,7 @@ Two wrinkles it works around, both caused by repos that commit their build outpu
 gmaf-workspace/
 ├── mise.toml          # pinned toolchains + task definitions
 ├── repos.txt          # manifest of managed GMAF repositories
-├── scripts/           # clone/setup/build/clean/status/list implementations (bash + one python helper)
+├── scripts/           # clone/setup/build/dev/clean/status implementations (bash + one python helper)
 │   └── pom-graph.py   # derives the build order from the repos' pom.xml files
 └── repos/             # created by `mise run clone`, git-ignored, holds the real checkouts
 ```
