@@ -33,6 +33,10 @@ run = "python3 scripts/pom-graph.py --format=human"
 description = "Build every cloned repo in pom.xml dependency order (mvn install, npm build, cmake)"
 run = "bash scripts/build-all.sh"
 
+[tasks.idea]
+description = "Generate an IntelliJ IDEA project linking every cloned repo (Maven modules, Git roots, run configs)"
+run = "python3 scripts/idea-project.py"
+
 [tasks.dev]
 description = "Run the dev environment: GMAF-UI (hosts the REST API) + the React web UI prototype; --basedir picks the conf folder"
 run = "bash scripts/dev.sh"

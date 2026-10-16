@@ -23,6 +23,7 @@ mise run clone    # clones every repo in repos.txt into ./repos
 mise run setup    # resolves Maven deps / npm installs for each repo
 mise run build    # builds every repo in pom.xml dependency order
 mise run dev      # runs GMAF-UI + the web UI prototype
+mise run idea     # generates an IntelliJ project covering every repo
 mise run status   # git status across every checked-out repo
 mise run list     # show the manifest with clone status
 ```
@@ -37,7 +38,8 @@ Every `mise run <task>` activates the pinned toolchain versions automatically (n
 | node   | lts     |
 | python | 3.11    |
 
-(Python is used by `scripts/pom-graph.py`, which derives the build order.)
+(Python runs `scripts/pom-graph.py`, which derives the build order, and
+`scripts/idea-project.py`, which generates the IntelliJ project.)
 
 ## Repositories managed here
 
@@ -112,6 +114,37 @@ mise run pull                       # git pull --ff-only everywhere
 mise run status                     # git status -sb everywhere
 mise run exec -- git log -1 --oneline   # run any command in every cloned repo
 ```
+
+## IntelliJ IDEA
+
+```sh
+mise run idea                       # generate .idea/ for the whole workspace
+mise run idea -- --dry-run          # show what it would write
+mise run idea -- --force            # overwrite files that already exist
+```
+
+mise has no IDE integration of its own, but everything IDEA needs here is already
+in `repos.txt` and the checkouts, so `scripts/idea-project.py` derives it. Re-run after
+adding a repo and the project follows. `.idea/` is git-ignored — it is generated, not
+authored.
+
+What it writes:
+
+| file | why |
+|------|-----|
+| `.idea/misc.xml` | links every cloned Maven repo as a Maven project, so all 6 import as modules into one window instead of six separate projects |
+| `.idea/vcs.xml` | registers each checkout as its own Git root — without this the Git panel only sees the workspace repo and none of the actual GMAF code |
+| `.idea/runConfigurations/GMAF_UI.xml` | runs `de.swa.ui.Main` with the working directory set to `repos/gmaf-mvr`, the same basedir rule `mise run dev` applies |
+| `.idea/runConfigurations/Web_UI__npm_start_.xml` | `npm start` for the web prototype, with `BROWSER=none` |
+
+Existing files are kept unless `--force` is passed, so local tweaks survive a re-run.
+
+**The project SDK needs one manual step the first time.** `misc.xml` can only reference an
+SDK *by name* (`21`); the actual SDK table lives in your JetBrains config directory, not in
+the project. If IDEA reports "No SDK", add the JDK mise manages once via
+*File > Project Structure > SDKs > + > Add JDK* — the task prints the path
+(`mise where java`). Writing into IDEA's own config instead was deliberately avoided: it is
+version-specific and IDEA rewrites it on exit, so edits made behind a running IDE get lost.
 
 ## Running the dev environment
 
@@ -239,7 +272,8 @@ gmaf-workspace/
 ├── mise.toml          # pinned toolchains + task definitions
 ├── repos.txt          # manifest of managed GMAF repositories
 ├── scripts/           # clone/setup/build/dev/clean/status implementations (bash + one python helper)
-│   └── pom-graph.py   # derives the build order from the repos' pom.xml files
+│   ├── pom-graph.py   # derives the build order from the repos' pom.xml files
+│   └── idea-project.py # generates the IntelliJ project from repos.txt
 └── repos/             # created by `mise run clone`, git-ignored, holds the real checkouts
 ```
 
