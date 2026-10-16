@@ -1,0 +1,31 @@
+[tools]
+java = "21"
+maven = "latest"
+node = "lts"
+python = "3.11"
+cmake = "latest"
+
+[tasks.list]
+description = "List all GMAF repositories in the manifest and their clone status"
+run = "bash scripts/list-repos.sh"
+
+[tasks.clone]
+description = "Clone every GMAF repository into ./repos (skips repos already cloned)"
+run = "bash scripts/clone-all.sh"
+
+[tasks.pull]
+description = "Git pull --ff-only in every cloned repository"
+run = "bash scripts/foreach.sh git pull --ff-only"
+
+[tasks.status]
+description = "Show git status -sb for every cloned repository"
+run = "bash scripts/foreach.sh git status -sb"
+
+[tasks.setup]
+description = "Clone (if needed) and bootstrap every repo for local development"
+depends = ["clone"]
+run = "bash scripts/setup-all.sh"
+
+[tasks.exec]
+description = "Run an arbitrary command in every cloned repo, e.g. `mise run exec -- git log -1`"
+run = "bash scripts/foreach.sh"

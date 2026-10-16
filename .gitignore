@@ -1,0 +1,11 @@
+# this workspace only orchestrates the actual GMAF checkouts; don't vendor them
+/repos/
+
+# build artifacts of whichever tool happens to run at the workspace root
+/target/
+/.venv/
+node_modules/
+
+.DS_Store
+.idea/
+*.iml
