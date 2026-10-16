@@ -19,8 +19,15 @@ while IFS='|' read -r name url kind branch desc; do
                 || { echo "   !! maven dependency resolution failed in ${name}"; status=1; }
             ;;
         node)
-            (cd "${dest}" && npm install --no-audit --no-fund) \
-                || { echo "   !! npm install failed in ${name}"; status=1; }
+            # `npm ci` honours the lockfile without rewriting it; plain
+            # `npm install` leaves package-lock.json modified in the checkout.
+            if [ -f "${dest}/package-lock.json" ]; then
+                (cd "${dest}" && npm ci --no-audit --no-fund) \
+                    || { echo "   !! npm ci failed in ${name}"; status=1; }
+            else
+                (cd "${dest}" && npm install --no-audit --no-fund) \
+                    || { echo "   !! npm install failed in ${name}"; status=1; }
+            fi
             ;;
         python-maven)
             (cd "${dest}" && mvn -q -ntp -DskipTests dependency:go-offline) \

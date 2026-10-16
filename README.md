@@ -114,13 +114,41 @@ mise run status                     # git status -sb everywhere
 mise run exec -- git log -1 --oneline   # run any command in every cloned repo
 ```
 
+## Starting over
+
+```sh
+mise run reset                      # delete every checkout and clone it again
+mise run clean                      # just delete the checkouts
+mise run clean -- --dry-run         # list what would be deleted, delete nothing
+mise run clean -- --artifacts       # keep the checkouts, drop target/ node_modules/ build/
+mise run clean -- --force           # delete even when a repo holds unsaved work
+```
+
+`clean` refuses to delete a checkout that holds work you could not get back:
+uncommitted changes to tracked files, untracked files, commits that exist on no remote,
+or stash entries. It names the repo and the reason, cleans everything else, and exits
+non-zero — so `reset`, which depends on it, stops rather than cloning over your work.
+Directories in `repos/` that `repos.txt` no longer lists are always treated as stale and
+removed.
+
+Two wrinkles it works around, both caused by repos that commit their build output:
+
+- `GMAF` tracks `target/classes/*.class`, so every build leaves it "modified". Changes
+  confined to `target/`, `build/`, `node_modules/` and `.venv/` are therefore not treated
+  as unsaved work — otherwise `clean` would refuse after every single build.
+- For the same reason `--artifacts` skips build directories that are tracked in git, so
+  it doesn't turn `GMAF`'s working tree into a list of deleted files.
+
+`setup` and `build` use `npm ci` when a `package-lock.json` is present, since plain
+`npm install` rewrites the lockfile and leaves the checkout dirty after every run.
+
 ## Layout
 
 ```
 gmaf-workspace/
 ├── mise.toml          # pinned toolchains + task definitions
 ├── repos.txt          # manifest of managed GMAF repositories
-├── scripts/           # clone/setup/build/status/list implementations (bash + one python helper)
+├── scripts/           # clone/setup/build/clean/status/list implementations (bash + one python helper)
 │   └── pom-graph.py   # derives the build order from the repos' pom.xml files
 └── repos/             # created by `mise run clone`, git-ignored, holds the real checkouts
 ```

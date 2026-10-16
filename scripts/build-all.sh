@@ -98,9 +98,17 @@ while IFS='|' read -r name kind deps; do
             ;;
         node)
             if [ ! -d "${dest}/node_modules" ]; then
-                echo "   node_modules missing, running npm install first"
-                if ! (cd "${dest}" && npm install --no-audit --no-fund); then
-                    echo "   !! npm install failed in ${name}"
+                # `npm ci` installs exactly what the lockfile pins and leaves it
+                # untouched; plain `npm install` rewrites package-lock.json and
+                # leaves the checkout dirty after every build.
+                if [ -f "${dest}/package-lock.json" ]; then
+                    install_cmd=(npm ci --no-audit --no-fund)
+                else
+                    install_cmd=(npm install --no-audit --no-fund)
+                fi
+                echo "   node_modules missing, running ${install_cmd[*]} first"
+                if ! (cd "${dest}" && "${install_cmd[@]}"); then
+                    echo "   !! dependency install failed in ${name}"
                     failed+=("${name}")
                     continue
                 fi
