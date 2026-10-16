@@ -153,29 +153,42 @@ The jar always comes from the `gmaf-mvr-ui-public` build; only the working direc
 changes. A bare name is looked up under `repos/`, anything with a `/` is used as a path,
 so you can point it at a data directory outside the workspace entirely.
 
-The default is `repos/gmaf-mvr`. The two obvious candidates are close to complementary,
-which is worth knowing before you pick one:
+The default is `repos/gmaf-mvr`, which is where the sample collection lives (58 assets in
+`collection/`).
 
-| | `gmaf-mvr` (default) | `gmaf-mvr-ui-public` |
-|---|---|---|
-| has | `collection`, `conf`, `dictionary`, `resources`, `schema`, `export` | `conf`, `export`, `flows`, `graphcodes`, `mmfgs`, `rdf`, `temp`, `thumbnails` |
-| its `gmaf.config` points at | `collection2`, `mmfgs-foo`, `graphcodes`, `flows`, `rdf` — **none of which exist there** | `collection` — which does not exist there; the rest do |
+#### Only `collectionPath` has to exist
 
-So `gmaf-mvr` carries the data but its config names folders that aren't present, while
-`gmaf-mvr-ui-public` has the runtime folders but no collection. The task prints exactly
-which folders named in the config are missing before starting, rather than letting GMAF
-quietly create empty ones or fail later:
+`Configuration.check()` runs at startup and `mkdirs()` the output folders —
+`graphCodeRepository`, `mmfgRepository`, `rdfRepository`, `thumbnailFolder`,
+`exportFolder`, `processingFlowFolder` and `temp` — so those are created for you if the
+config names folders that aren't there yet.
+
+`collectionPath` is the exception: it is **not** created. A wrong value there makes
+`DefaultMMFGCollection` log `path <x> does not exist`, skip it, and carry on with an
+empty collection. Nothing else fails, which reads exactly like "the config is being
+ignored" even though it was parsed fine. The task therefore checks that one up front:
 
 ```
-== GMAF-UI      gmaf-ui-1.0.3-executable.jar
-   basedir      repos/gmaf-mvr  (conf/gmaf.config + data folders)
-   !! folders named in conf/gmaf.config that do not exist there:
+   !! collection folder named in conf/gmaf.config does not exist:
      collectionPath = collection2
-     mmfgRepository = mmfgs-foo
+      GMAF logs 'path ... does not exist' and starts with an empty
+      collection — point collectionPath at a folder that has assets.
 ```
 
-Fix that by editing the `conf/gmaf.config` of whichever basedir you use, or by pointing
-`--basedir` at a directory that has both the config and the data.
+Relative paths themselves work — they resolve against the working directory, which is
+what `--basedir` sets. Verified against the real parser with the fat jar on the
+classpath, running in `repos/gmaf-mvr`:
+
+```
+collectionPaths  = [collection]
+  -> 'collection' exists=true abs=.../repos/gmaf-mvr/collection files=58
+serverPort       = 8481      (from conf/gmaf.config)
+restServicePort  = 8242      (code default; the config does not set it)
+```
+
+Note that `collectionPath` accepts a comma-separated list, and that the GMAF-UI login
+dialog is **modal and opens before the collection is loaded** — nothing is read from
+disk until you log in (`api_key` in `conf/gmaf.config`).
 
 Ports: `serverPort = 8481` (SOAP) comes from `conf/gmaf.config`; the REST port is *not*
 in that file and falls back to the `8242` default in `de.swa.ui.Configuration`, which is

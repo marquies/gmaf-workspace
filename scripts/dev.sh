@@ -77,17 +77,25 @@ if [ "${run_ui}" -eq 1 ]; then
     [ -f "${BASEDIR}/conf/gmaf.config" ] \
         || fail "no conf/gmaf.config in ${BASEDIR} — pass --basedir=<dir> pointing at one that has it"
 
-    # Every data folder in gmaf.config is resolved relative to the working
-    # directory too, and GMAF creates some of them silently rather than warning.
+    # Every folder named in gmaf.config resolves relative to the working
+    # directory. Configuration.check() mkdirs the output ones (graphcodes,
+    # mmfgs, rdf, thumbnails, export, flows, temp) on startup, but NOT
+    # collectionPath — a wrong value there just logs "path X does not exist"
+    # and leaves you with an empty collection, which is easy to misread as the
+    # config being ignored altogether.
     missing=""
-    for key in collectionPath graphCodeRepository mmfgRepository exportFolder \
-               processingFlowFolder rdfRepository; do
-        value="$(config_value "${BASEDIR}/conf/gmaf.config" "${key}")"
+    collection_paths="$(config_value "${BASEDIR}/conf/gmaf.config" collectionPath)"
+    old_ifs="${IFS}"; IFS=','
+    for value in ${collection_paths}; do
+        IFS="${old_ifs}"
+        value="$(printf '%s' "${value}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
         [ -n "${value}" ] || continue
-        case "${value}" in /*) continue ;; esac   # absolute paths are the user's business
-        [ -d "${BASEDIR}/${value}" ] || missing="${missing}  ${key} = ${value}
+        case "${value}" in /*) target="${value}" ;; *) target="${BASEDIR}/${value}" ;; esac
+        [ -d "${target}" ] || missing="${missing}  collectionPath = ${value}
 "
+        IFS=','
     done
+    IFS="${old_ifs}"
     # The shade plugin attaches the runnable fat jar with an -executable
     # classifier; the plain GMAF-UI.jar has no Main-Class and no dependencies.
     UI_JAR="$(ls -t "${UI_DIR}"/target/*-executable.jar 2>/dev/null | head -1)"
@@ -156,9 +164,10 @@ if [ "${run_ui}" -eq 1 ]; then
     echo "== GMAF-UI      $(basename "${UI_JAR}")"
     echo "   basedir      ${BASEDIR#"${WORKSPACE_ROOT}"/}  (conf/gmaf.config + data folders)"
     if [ -n "${missing}" ]; then
-        echo "   !! folders named in conf/gmaf.config that do not exist there:"
+        echo "   !! collection folder named in conf/gmaf.config does not exist:"
         printf '%s' "${missing}" | sed 's/^/   /'
-        echo "      GMAF may create them empty or fail on first use."
+        echo "      GMAF logs 'path ... does not exist' and starts with an empty"
+        echo "      collection — point collectionPath at a folder that has assets."
     fi
     echo "   REST API     http://localhost:${REST_PORT}/gmaf/gmafApi"
     echo "   Swagger UI   http://localhost:${REST_PORT}/swagger-ui/index.html"
