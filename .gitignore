@@ -9,3 +9,8 @@ node_modules/
 .DS_Store
 .idea/
 *.iml
+*.omc
+
+# maintainer mode (mise.maintainer.toml): private checkouts and their own Maven repo
+/repos-maintainer/
+/.m2-maintainer/

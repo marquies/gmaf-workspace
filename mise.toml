@@ -4,6 +4,13 @@ maven = "latest"
 node = "lts"
 python = "3.11"    # used by scripts/pom-graph.py
 
+# Student mode: the public repos. Maintainers override these in
+# mise.maintainer.toml, loaded on top of this file when MISE_ENV=maintainer.
+[env]
+GMAF_MANIFEST = "{{config_root}}/repos.txt"
+GMAF_REPOS_DIR = "{{config_root}}/repos"
+GMAF_UI_REPO = "gmaf-mvr-ui-public"
+
 [tasks.list]
 description = "List all GMAF repositories in the manifest and their clone status"
 run = "bash scripts/list-repos.sh"

@@ -148,7 +148,7 @@ for name in ${removable[@]+"${removable[@]}"}; do
     [ "${dry_run}" -eq 0 ] && rm -rf "${REPOS_DIR:?}/${name}"
 done
 for name in ${orphans[@]+"${orphans[@]}"}; do
-    echo "  ${name} (not in repos.txt any more)"
+    echo "  ${name} (not in ${REPOS_FILE##*/} any more)"
     [ "${dry_run}" -eq 0 ] && rm -rf "${REPOS_DIR:?}/${name}"
 done
 

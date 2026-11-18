@@ -20,11 +20,11 @@ set +e
 # whole tree — npm start spawns react-scripts, which spawns further children.
 set -m
 
-UI_DIR="${REPOS_DIR}/gmaf-mvr-ui-public"
+UI_DIR="${REPOS_DIR}/${UI_REPO}"
 WEB_DIR="${REPOS_DIR}/gmaf-mvr-webui-prototype"
 
 # Where GMAF-UI runs, i.e. which conf/ and data folders it picks up. A bare name
-# is taken as a repo under ./repos; anything else is used as a path.
+# is taken as a repo in the checkout folder; anything else is used as a path.
 BASEDIR_ARG="${GMAF_BASEDIR:-gmaf-mvr}"
 
 # Defaults come from de.swa.ui.Configuration; conf/gmaf.config overrides them.
@@ -66,11 +66,11 @@ config_value() {
 UI_JAR=""
 BASEDIR=""
 if [ "${run_ui}" -eq 1 ]; then
-    [ -d "${UI_DIR}" ] || fail "gmaf-mvr-ui-public is not cloned — run 'mise run clone'"
+    [ -d "${UI_DIR}" ] || fail "${UI_REPO} is not cloned — run 'mise run clone'"
 
     case "${BASEDIR_ARG}" in
         */*|.|..) BASEDIR="${BASEDIR_ARG}" ;;
-        *)        BASEDIR="${REPOS_DIR}/${BASEDIR_ARG}" ;;   # bare name -> ./repos/<name>
+        *)        BASEDIR="${REPOS_DIR}/${BASEDIR_ARG}" ;;   # bare name -> <checkout folder>/<name>
     esac
     [ -d "${BASEDIR}" ] || fail "basedir '${BASEDIR_ARG}' does not exist (looked in ${BASEDIR})"
     BASEDIR="$(cd "${BASEDIR}" && pwd)"
@@ -99,7 +99,7 @@ if [ "${run_ui}" -eq 1 ]; then
     # The shade plugin attaches the runnable fat jar with an -executable
     # classifier; the plain GMAF-UI.jar has no Main-Class and no dependencies.
     UI_JAR="$(ls -t "${UI_DIR}"/target/*-executable.jar 2>/dev/null | head -1)"
-    [ -n "${UI_JAR}" ] || fail "no runnable jar in gmaf-mvr-ui-public/target — run 'mise run build' first"
+    [ -n "${UI_JAR}" ] || fail "no runnable jar in ${UI_REPO}/target — run 'mise run build' first"
     for port in "${REST_PORT}" "${SOAP_PORT}"; do
         owner="$(port_owner "${port}")"
         [ -n "${owner}" ] && fail "port ${port} is already in use (pid ${owner}) — stop that process first"

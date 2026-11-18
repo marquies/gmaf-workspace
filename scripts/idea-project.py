@@ -17,18 +17,22 @@ from __future__ import annotations
 import argparse
 import subprocess
 import sys
+import os
 from pathlib import Path
 
 WORKSPACE_ROOT = Path(__file__).resolve().parent.parent
-REPOS_FILE = WORKSPACE_ROOT / "repos.txt"
-REPOS_DIR = WORKSPACE_ROOT / "repos"
+# mise.toml sets these; mise.maintainer.toml points them at the private repos.
+REPOS_FILE = Path(os.environ.get("GMAF_MANIFEST", WORKSPACE_ROOT / "repos.txt"))
+REPOS_DIR = Path(os.environ.get("GMAF_REPOS_DIR", WORKSPACE_ROOT / "repos"))
 IDEA_DIR = WORKSPACE_ROOT / ".idea"
+# Checkout folder as IDEA sees it: "repos", or "repos-maintainer" in maintainer mode.
+REPOS_REL = os.path.relpath(REPOS_DIR, WORKSPACE_ROOT)
 
 MAVEN_KINDS = {"maven", "python-maven"}
 
 # The UI is launched from gmaf-mvr, not from its own checkout: Configuration
 # reads conf/gmaf.config relative to the working directory. Mirrors dev.sh.
-UI_REPO = "gmaf-mvr-ui-public"
+UI_REPO = os.environ.get("GMAF_UI_REPO", "gmaf-mvr-ui-public")
 UI_MAIN_CLASS = "de.swa.ui.Main"
 UI_BASEDIR = "gmaf-mvr"
 WEB_REPO = "gmaf-mvr-webui-prototype"
@@ -105,7 +109,7 @@ def ui_run_config(module_name):
   <configuration default="false" name="GMAF-UI" type="Application" factoryName="Application">
     <option name="MAIN_CLASS_NAME" value="{UI_MAIN_CLASS}" />
     <module name="{module_name}" />
-    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/repos/{UI_BASEDIR}" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/{REPOS_REL}/{UI_BASEDIR}" />
     <method v="2">
       <option name="Make" enabled="true" />
     </method>
@@ -117,7 +121,7 @@ def ui_run_config(module_name):
 def web_run_config():
     return f"""<component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Web UI (npm start)" type="js.build_tools.npm" nameIsGenerated="false">
-    <package-json value="$PROJECT_DIR$/repos/{WEB_REPO}/package.json" />
+    <package-json value="$PROJECT_DIR$/{REPOS_REL}/{WEB_REPO}/package.json" />
     <command value="run" />
     <scripts>
       <script value="start" />
@@ -155,8 +159,8 @@ def main():
         print("No repositories cloned yet — run 'mise run clone' first.")
         return 1
 
-    maven_poms = [f"repos/{n}/pom.xml" for n, k, p in cloned if k in MAVEN_KINDS and (p / "pom.xml").is_file()]
-    repo_dirs = [f"repos/{n}" for n, _k, _p in cloned]
+    maven_poms = [f"{REPOS_REL}/{n}/pom.xml" for n, k, p in cloned if k in MAVEN_KINDS and (p / "pom.xml").is_file()]
+    repo_dirs = [f"{REPOS_REL}/{n}" for n, _k, _p in cloned]
     jdk = jdk_version()
 
     written, skipped = [], []

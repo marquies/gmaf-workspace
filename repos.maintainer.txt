@@ -1,0 +1,11 @@
+# GMAF repository manifest, maintainer mode (see mise.maintainer.toml)
+# Same as repos.txt, but with the private repos in place of their -public twins.
+# format: name|git_url|kind|default_branch|description
+# kind: maven | node | cmake | python-maven
+GMAF|https://github.com/marquies/GMAF.git|maven|master|Generic Multimedia Analysis Framework core (MMFG model)
+gmaf-mvr|https://github.com/marquies/gmaf-mvr.git|maven|master|GMAF-MVR core (Metaverse Video Recording pipeline)
+gmaf-mvr-api|https://github.com/marquies/gmaf-mvr-api.git|maven|master|GMAF-MVR REST API
+gmaf-mvr-semantics|https://github.com/marquies/gmaf-mvr-semantics.git|maven|master|GMAF-MVR semantics/explainability module (private)
+gmaf-mvr-service|https://github.com/marquies/gmaf-mvr-service.git|maven|master|GMAF-MVR service layer (private)
+gmaf-mvr-ui|https://github.com/marquies/gmaf-mvr-ui.git|maven|master|GMAF-MVR UI backend (private)
+gmaf-mvr-webui-prototype|https://github.com/marquies/gmaf-mvr-webui-prototype.git|node|master|GMAF-MVR React web UI prototype

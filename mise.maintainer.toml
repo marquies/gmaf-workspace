@@ -1,0 +1,16 @@
+# Maintainer mode: loaded on top of mise.toml when MISE_ENV=maintainer
+# (`export MISE_ENV=maintainer`, or `mise -E maintainer run <task>`).
+# Works on the private repos and adds the maintainer-only tasks.
+
+[env]
+GMAF_MANIFEST = "{{config_root}}/repos.maintainer.txt"
+# Kept apart from ./repos so clean/status/build never mix public and private checkouts.
+GMAF_REPOS_DIR = "{{config_root}}/repos-maintainer"
+GMAF_UI_REPO = "gmaf-mvr-ui"
+# The private repos publish the same groupId:artifactId:version as their -public
+# twins, so a shared ~/.m2 would let one mode build against the other's jars.
+MAVEN_ARGS = "-Dmaven.repo.local={{config_root}}/.m2-maintainer"
+
+[tasks.graph]
+description = "Build the code knowledge graph across the private repos (maintainer only)"
+run = "bash scripts/maintainer/graph.sh"

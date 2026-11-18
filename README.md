@@ -265,16 +265,61 @@ Two wrinkles it works around, both caused by repos that commit their build outpu
 `setup` and `build` use `npm ci` when a `package-lock.json` is present, since plain
 `npm install` rewrites the lockfile and leaves the checkout dirty after every run.
 
+## Maintainer mode
+
+By default the workspace is set up for students: the public repos, the core tasks, nothing
+else. Maintainers switch to a second mode that works on the **private** repos and adds
+maintainer-only tasks (currently `graph`, the code knowledge graph):
+
+```sh
+export MISE_ENV=maintainer          # in your shell profile or .envrc; or per command:
+mise -E maintainer run clone        # clones the private repos into ./repos-maintainer
+mise -E maintainer run build
+mise -E maintainer run graph        # maintainer only — students don't see this task
+```
+
+This is mise's built-in [config environments](https://mise.jdx.dev/configuration/environments.html):
+with `MISE_ENV=maintainer`, `mise.maintainer.toml` is loaded on top of `mise.toml`. It
+overrides three variables that every script reads, and adds the extra tasks:
+
+| variable | student (`mise.toml`) | maintainer (`mise.maintainer.toml`) |
+|----------|-----------------------|-------------------------------------|
+| `GMAF_MANIFEST` | `repos.txt` | `repos.maintainer.txt` |
+| `GMAF_REPOS_DIR` | `repos/` | `repos-maintainer/` |
+| `GMAF_UI_REPO` | `gmaf-mvr-ui-public` | `gmaf-mvr-ui` |
+| `MAVEN_ARGS` | — | `-Dmaven.repo.local=.m2-maintainer` |
+
+Two of these exist to keep the modes from stepping on each other:
+
+- **Separate checkout folders.** Both sets of checkouts can live side by side, and
+  `clean`/`status`/`build` only ever see the current mode's repos.
+- **Separate local Maven repo.** The private repos publish the same
+  `groupId:artifactId:version` as their `-public` twins (e.g. both are
+  `de.swa:gmaf-ui:1.0.3`), so with a shared `~/.m2` one mode's `mvn install` would
+  silently replace the other's jars. IntelliJ doesn't read `MAVEN_ARGS`; if you open the
+  maintainer checkouts there, set *Settings > Build Tools > Maven > Local repository* to
+  `.m2-maintainer` as well.
+
+`mise run idea` follows the active mode too, so re-run it with `--force` after switching.
+
+`graph` is a placeholder (`scripts/maintainer/graph.sh`) until a knowledge-graph tool is
+chosen: add the tool to `[tools]` in `mise.maintainer.toml` and its indexing command to
+the script.
+
 ## Layout
 
 ```
 gmaf-workspace/
-├── mise.toml          # pinned toolchains + task definitions
-├── repos.txt          # manifest of managed GMAF repositories
+├── mise.toml          # pinned toolchains + task definitions (student mode)
+├── mise.maintainer.toml # maintainer-mode overlay, loaded when MISE_ENV=maintainer
+├── repos.txt          # manifest of managed GMAF repositories (public)
+├── repos.maintainer.txt # manifest for maintainer mode (private repos)
 ├── scripts/           # clone/setup/build/dev/clean/status implementations (bash + one python helper)
 │   ├── pom-graph.py   # derives the build order from the repos' pom.xml files
-│   └── idea-project.py # generates the IntelliJ project from repos.txt
-└── repos/             # created by `mise run clone`, git-ignored, holds the real checkouts
+│   ├── idea-project.py # generates the IntelliJ project from repos.txt
+│   └── maintainer/    # maintainer-only task implementations (graph.sh)
+├── repos/             # created by `mise run clone`, git-ignored, holds the real checkouts
+└── repos-maintainer/  # same, for maintainer mode, plus .m2-maintainer/ next to it
 ```
 
 ## Notes on the `kind` field

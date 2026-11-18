@@ -15,11 +15,13 @@ import argparse
 import re
 import sys
 import xml.etree.ElementTree as ET
+import os
 from pathlib import Path
 
 WORKSPACE_ROOT = Path(__file__).resolve().parent.parent
-REPOS_FILE = WORKSPACE_ROOT / "repos.txt"
-REPOS_DIR = WORKSPACE_ROOT / "repos"
+# mise.toml sets these; mise.maintainer.toml points them at the private repos.
+REPOS_FILE = Path(os.environ.get("GMAF_MANIFEST", WORKSPACE_ROOT / "repos.txt"))
+REPOS_DIR = Path(os.environ.get("GMAF_REPOS_DIR", WORKSPACE_ROOT / "repos"))
 
 # Repo kinds that are built by Maven and therefore carry a pom.xml.
 MAVEN_KINDS = {"maven", "python-maven"}
